@@ -13,9 +13,7 @@ export function getLocaleUrl(locale: string, path?: string) {
       path = path.slice(1)
     }
   }
-  if (!path) {
-    path = ""
-  }
+  path ??= ""
 
   return `${env.DOMAIN}/${locale}${path}`
 }

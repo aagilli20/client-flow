@@ -44,3 +44,10 @@ yarn-error.log*
 
 # idea files
 .idea
+# firebase
+service-account*.json
+*-firebase-adminsdk-*.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

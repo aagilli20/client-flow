@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import LanguageSwitch from './LanguageSwitch';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { env } from '@/env';
-import { Menu, Github } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -23,6 +23,7 @@ const navItems = [
 
 export default function Navbar() {
   const t = useTranslations('Navbar');
+  const locale = useLocale();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -45,15 +46,15 @@ export default function Navbar() {
       <div className="container flex h-14 items-center mx-auto px-4">
         {/* Logo */}
         <div className="flex flex-1 items-center">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href={`/${locale}`} className="flex items-center space-x-2">
             <Image
               src="/logo.png"
-              alt="HorizonWing Logo"
+              alt="ClientFlow"
               width={32}
               height={32}
               className="h-6 w-auto rounded-full"
             />
-            <span className="font-bold text-xl text-black">HorizonWing</span>
+            <span className="font-bold text-xl text-black">ClientFlow</span>
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -62,7 +63,7 @@ export default function Navbar() {
               {navItems.map(({ key, href }) => (
                 <Link
                   key={key}
-                  href={href}
+                  href={`/${locale}${href === '/' ? '' : href}`}
                   className={cn(
                     "text-base font-medium transition-colors hover:text-primary",
                     "text-black/90"
@@ -77,15 +78,9 @@ export default function Navbar() {
 
         {/* Right Side */}
         <div className="flex items-center gap-2">
-          <a
-            href={env.NEXT_PUBLIC_GITHUB_REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="view in github"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background"
-          >
-            <Github className="h-5 w-5" />
-          </a>
+          <Button asChild size="sm" className="hidden sm:inline-flex">
+            <Link href={`/${locale}/auth`}>{t('login')}</Link>
+          </Button>
           <div className="hidden md:block">
             <LanguageSwitch />
           </div>
@@ -108,12 +103,13 @@ export default function Navbar() {
                 {navItems.map(({ key, href }) => (
                   <Link
                     key={key}
-                    href={href}
+                    href={`/${locale}${href === '/' ? '' : href}`}
                     className="text-base font-medium transition-colors hover:text-primary"
                   >
                     {t(key)}
                   </Link>
                 ))}
+                <Link href={`/${locale}/auth`} className="text-base font-semibold">{t('login')}</Link>
               </nav>
             </SheetContent>
           </Sheet>

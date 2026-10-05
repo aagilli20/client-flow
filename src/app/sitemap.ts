@@ -8,7 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // 添加您网站的其他路由...
   ];
 
-  const locales = ["en", "zh"]; // 您支持的语言列表
+  const locales = ["es", "en"]; // 您支持的语言列表
 
   return routes.flatMap((route) =>
     locales.map((locale) => {

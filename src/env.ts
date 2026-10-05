@@ -10,8 +10,7 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    VERSION: z.string(),
-    GITHUB_REPO_URL: z.string().default("https://github.com/HorizonWing/horizon-wing-landing-page"),
+    VERSION: z.string().default("0.1.0"),
     DOMAIN: z.string().default("http://localhost:3000"),
     GA_ID: z.string().optional(),
   },
@@ -23,7 +22,6 @@ export const env = createEnv({
    */
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
-    NEXT_PUBLIC_GITHUB_REPO_URL: z.string().default("https://github.com/HorizonWing/horizon-wing-landing-page"),
   },
 
   /**
@@ -33,8 +31,6 @@ export const env = createEnv({
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     VERSION: process.env.VERSION,
-    GITHUB_REPO_URL: process.env.GITHUB_REPO_URL,
-    NEXT_PUBLIC_GITHUB_REPO_URL: process.env.NEXT_PUBLIC_GITHUB_REPO_URL,
     DOMAIN: process.env.DOMAIN,
     GA_ID: process.env.GA_ID,
   },

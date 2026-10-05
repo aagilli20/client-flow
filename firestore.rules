@@ -1,0 +1,113 @@
+rules_version = '2';
+
+// Reglas de seguridad de ClientFlow.
+// Modelo: aislamiento por usuario (cada documento tiene `userId` = uid del dueño).
+// Nadie puede leer/escribir datos de otro usuario. Por defecto todo está denegado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+    // Al crear, el documento debe declararse del propio usuario.
+    function createsOwn() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    // Al actualizar, `userId` y `createdAt` son inmutables (no se puede "regalar" ni reescribir el origen).
+    function keepsImmutable() {
+      return request.resource.data.userId == resource.data.userId
+          && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
+    }
+    function isString(field, maxLen) {
+      return request.resource.data[field] is string && request.resource.data[field].size() <= maxLen;
+    }
+    function isNum(field, minV, maxV) {
+      return request.resource.data[field] is number
+          && request.resource.data[field] >= minV && request.resource.data[field] <= maxV;
+    }
+
+    // ── users/{uid}: perfil y metas ─────────────────────
+    // Solo el propio usuario. No hay campos privilegiados (roles, plan, etc.) en este modelo.
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && isString('displayName', 80)
+        && request.resource.data.keys().hasOnly(['displayName', 'sponsorName', 'goals', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // ── contacts (prospectos) ───────────────────────────
+    match /contacts/{id} {
+      allow read: if isOwner();
+      allow create: if createsOwn()
+        && isString('name', 80)
+        && request.resource.data.category in ['negocio', 'cliente']
+        && request.resource.data.temperature in ['frio', 'tibio', 'caliente']
+        && request.resource.data.stage in ['conversacion', 'seguimiento', 'presentacion', 'propuesta']
+        && request.resource.data.result in ['abierto', 'cliente', 'recurrente', 'equipo', 'despues', 'no'];
+      allow update: if isOwner() && keepsImmutable()
+        && isString('name', 80)
+        && request.resource.data.result in ['abierto', 'cliente', 'recurrente', 'equipo', 'despues', 'no'];
+      allow delete: if isOwner();
+    }
+
+    // ── team_members (equipo / nodos sombra) ────────────
+    match /team_members/{id} {
+      allow read: if isOwner();
+      allow create: if createsOwn()
+        && isString('name', 80)
+        && request.resource.data.status in ['shadow', 'registered']
+        && isNum('monthlyVolume', 0, 10000000);
+      allow update: if isOwner() && keepsImmutable()
+        && isString('name', 80)
+        && isNum('monthlyVolume', 0, 10000000);
+      allow delete: if isOwner();
+    }
+
+    // ── social_posts ────────────────────────────────────
+    match /social_posts/{id} {
+      allow read: if isOwner();
+      allow create: if createsOwn()
+        && request.resource.data.category in ['negocio', 'producto', 'estilo_vida'];
+      allow update: if isOwner() && keepsImmutable();
+      allow delete: if isOwner();
+    }
+
+    // ── focus_metrics ───────────────────────────────────
+    match /focus_metrics/{id} {
+      allow read: if isOwner();
+      allow create: if createsOwn()
+        && isString('name', 60)
+        && isNum('monthlyTarget', 1, 10000000)
+        && isNum('currentValue', 0, 10000000)
+        && isNum('weight', 1, 5);
+      allow update: if isOwner() && keepsImmutable()
+        && isNum('monthlyTarget', 1, 10000000)
+        && isNum('currentValue', 0, 10000000)
+        && isNum('weight', 1, 5);
+      allow delete: if isOwner();
+    }
+
+    // ── daily_activities: id determinista `${uid}_${YYYY-MM-DD}` ──
+    // Se escribe con set(merge) + increment(), por eso create/update comparten condiciones.
+    match /daily_activities/{id} {
+      allow read: if isOwner();
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.date
+        && request.resource.data.get('conversations', 0) >= 0
+        && request.resource.data.get('followUps', 0) >= 0
+        && request.resource.data.get('posts', 0) >= 0;
+      allow delete: if isOwner();
+    }
+
+    // Todo lo demás: denegado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

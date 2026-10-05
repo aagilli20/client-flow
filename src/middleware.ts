@@ -1,34 +1,43 @@
-// @auto-i18n-check. Please do not delete the line.
+import { type NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
 
-import createMiddleware from 'next-intl/middleware';
-import {locales, defaultLocale} from "../i18n/request";
-import type { NextRequest } from 'next/server';
+const locales = ['es', 'en'];
+const defaultLocale = 'es';
 
-const I18nMiddleware = createMiddleware({
+// Public routes that don't require auth
+const publicRoutes = ['/auth', '/'];
+
+const intlMiddleware = createIntlMiddleware({
   locales,
-  defaultLocale: defaultLocale,
-  localePrefix: 'as-needed'
-})
+  defaultLocale,
+  localePrefix: 'always',
+});
 
-export default async function middleware(request: NextRequest) {
-  const response = I18nMiddleware(request)
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // add X-Robots-Tag header
-  response.headers.set(
-    'X-Robots-Tag',
-    'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
-  )
+  // Strip locale prefix to check route
+  const localePattern = new RegExp(`^/(${locales.join('|')})`);
+  const strippedPath = pathname.replace(localePattern, '') || '/';
 
-  return response
+  // If it's a public route, just run intl middleware
+  const isPublic = publicRoutes.some(
+    (r) => strippedPath === r || strippedPath.startsWith(r + '/')
+  );
+
+  // Run intl middleware for locale handling
+  const response = intlMiddleware(request);
+
+  // Auth guard: redirect to /auth if no token and not public
+  if (!isPublic) {
+    // We rely on client-side auth guard (AuthProvider) for Firebase
+    // Middleware only handles i18n routing here
+    return response;
+  }
+
+  return response;
 }
 
 export const config = {
-    matcher: [
-        // Skip all internal paths (_next)
-        // Skip all api routes
-        // Skip all files in the public folder (favicon.ico, images, etc)
-        '/((?!api|_next/static|_next/image|favicon.ico|\\*.png|.*\\..*|robots.txt).*)',
-        // Match all locale prefixes
-        '/(ar|de|en|es|fr|hi|id|it|ja|ko|ms|pt|ru|th|vi|zh-t|zh)/:path*'
-    ]
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
 };
