@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Trash2, Upload, Users } from 'lucide-react';
 import { ConfirmDialog, EmptyState, ErrorState, FormSheet, PageHeader, Skeleton } from '@/components/app/shared';
 import { useToast } from '@/components/app/Toast';
 import { errorText, useCollection, useRepo } from '@/contexts/DataContext';
@@ -18,9 +18,11 @@ import {
   type Temperature,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import ImportDialog from './ImportDialog';
 import ProspectForm from './ProspectForm';
 
 const PAGE_SIZE = 10;
+const IMPORT_CHUNK = 20; // escrituras en paralelo al importar (evita saturar Firestore)
 type StatusFilter = 'all' | 'open' | 'stalled' | 'closed';
 type Sort = 'recent' | 'name' | 'next';
 
@@ -43,6 +45,7 @@ export default function ProspectsView() {
   const [editing, setEditing] = useState<Contact | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Contact | null>(null);
   const [bulkDelete, setBulkDelete] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const today = todayStr();
 
@@ -101,6 +104,23 @@ export default function ProspectsView() {
     }
   };
 
+  const importRows = async (items: ContactInput[], onProgress: (done: number) => void) => {
+    let done = 0;
+    try {
+      for (let i = 0; i < items.length; i += IMPORT_CHUNK) {
+        const chunk = items.slice(i, i + IMPORT_CHUNK);
+        await Promise.all(chunk.map((v) => create({ ...toPayload(v), followUpsCount: 0, lastActionDate: new Date().toISOString() })));
+        done += chunk.length;
+        onProgress(done);
+      }
+      toast.success(`${done} ${done === 1 ? 'prospecto importado' : 'prospectos importados'}`);
+    } catch (e) {
+      // lo ya escrito queda guardado y visible: se informa cuántos entraron
+      toast.error(`Se importaron ${done} de ${items.length}. ${errorText(e)}`);
+      throw e;
+    }
+  };
+
   const followUp = async (c: Contact) => {
     try {
       await update(c.id, {
@@ -146,9 +166,14 @@ export default function ProspectsView() {
         title="Prospectos"
         description="Tu embudo de contactos: quién es cada persona, en qué etapa está y cuándo seguirla."
         actions={
-          <button className="btn-primary" onClick={() => setEditing('new')}>
-            <Plus className="h-4 w-4" /> Nuevo prospecto
-          </button>
+          <>
+            <button className="btn-ghost" onClick={() => setImporting(true)}>
+              <Upload className="h-4 w-4" /> Importar
+            </button>
+            <button className="btn-primary" onClick={() => setEditing('new')}>
+              <Plus className="h-4 w-4" /> Nuevo prospecto
+            </button>
+          </>
         }
       />
 
@@ -301,6 +326,8 @@ export default function ProspectsView() {
           </div>
         </>
       )}
+
+      <ImportDialog open={importing} onOpenChange={setImporting} existing={data} onImport={importRows} />
 
       <FormSheet
         open={editing !== null}
