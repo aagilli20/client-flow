@@ -3,6 +3,8 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ExternalLink } from 'lucide-react';
+import { contactLink } from '@/lib/contact-link';
 import { Field, Spinner } from '@/components/app/shared';
 import {
   CATEGORIES,
@@ -39,6 +41,7 @@ export default function ProspectForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ContactInput>({
     resolver: zodResolver(contactInputSchema),
@@ -58,6 +61,7 @@ export default function ProspectForm({
       : DEFAULTS,
   });
 
+  const link = contactLink(watch('contactMethod'));
   const cls = (e?: unknown) => `input-field ${e ? 'input-error' : ''}`;
 
   return (
@@ -65,8 +69,24 @@ export default function ProspectForm({
       <Field label="Nombre" htmlFor="pf-name" error={errors.name?.message}>
         <input id="pf-name" autoFocus placeholder="Ej. Lucía Fernández" aria-invalid={!!errors.name} className={cls(errors.name)} {...register('name')} />
       </Field>
-      <Field label="Medio de contacto" htmlFor="pf-method" error={errors.contactMethod?.message} hint="WhatsApp, Instagram, teléfono…">
-        <input id="pf-method" placeholder="WhatsApp" className={cls(errors.contactMethod)} {...register('contactMethod')} />
+      <Field
+        label="Medio de contacto"
+        htmlFor="pf-method"
+        error={errors.contactMethod?.message}
+        hint="Teléfono con código de país (5493425482222) o link (instagram.com/usuario)."
+      >
+        <div className="flex gap-2">
+          <input id="pf-method" placeholder="5493425482222 o instagram.com/usuario" className={cls(errors.contactMethod)} {...register('contactMethod')} />
+          {link ? (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="btn-ghost shrink-0" title={link}>
+              Ir <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : (
+            <span aria-disabled="true" className="btn-ghost shrink-0 cursor-not-allowed opacity-50" title="Ingresá un teléfono o un link válido">
+              Ir <ExternalLink className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </div>
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
