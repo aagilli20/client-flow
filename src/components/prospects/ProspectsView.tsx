@@ -2,10 +2,11 @@
 
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Trash2, Upload, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, Globe, Mail, MessageCircle, Pencil, Plus, Search, Trash2, Upload, Users } from 'lucide-react';
 import { ConfirmDialog, EmptyState, ErrorState, FormSheet, PageHeader, Skeleton } from '@/components/app/shared';
 import { useToast } from '@/components/app/Toast';
 import { errorText, useCollection, useRepo } from '@/contexts/DataContext';
+import { emailLink, phoneDigits, phoneLink, socialLink } from '@/lib/contact-link';
 import { relativeDay, todayStr } from '@/lib/dates';
 import { isStalled } from '@/lib/metrics';
 import {
@@ -52,7 +53,7 @@ export default function ProspectsView() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     const rows = data.filter((c) => {
-      if (term && !`${c.name} ${c.notes ?? ''} ${c.contactMethod ?? ''}`.toLowerCase().includes(term)) return false;
+      if (term && !`${c.name} ${c.notes ?? ''} ${c.phone ?? ''} ${c.social ?? ''} ${c.email ?? ''}`.toLowerCase().includes(term)) return false;
       if (category && c.category !== category) return false;
       if (temperature && c.temperature !== temperature) return false;
       if (stage && c.stage !== stage) return false;
@@ -82,7 +83,10 @@ export default function ProspectsView() {
 
   const toPayload = (v: ContactInput) => ({
     ...v,
-    contactMethod: v.contactMethod || undefined,
+    phone: phoneDigits(v.phone) || undefined,
+    social: v.social || undefined,
+    email: v.email || undefined,
+    contactMethod: '', // campo anterior: al guardar queda reemplazado por los tres nuevos
     notes: v.notes || undefined,
     nextAction: v.nextAction || undefined,
     nextActionDate: v.nextActionDate || '',
@@ -280,7 +284,7 @@ export default function ProspectsView() {
                     <td className="px-4 py-3"><input type="checkbox" aria-label={`Seleccionar ${c.name}`} checked={selected.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 rounded border-input accent-orange-500" /></td>
                     <td className="px-2 py-3">
                       <button onClick={() => setEditing(c)} className="text-left font-medium hover:underline">{c.name}</button>
-                      <p className="text-xs text-muted-foreground">{LABELS.category[c.category]}{c.contactMethod ? ` · ${c.contactMethod}` : ''}</p>
+                      <p className="text-xs text-muted-foreground">{LABELS.category[c.category]}{summaryOf(c) ? ` · ${summaryOf(c)}` : ''}</p>
                     </td>
                     <td className="px-2 py-3"><ResultOrStage c={c} /></td>
                     <td className="px-2 py-3"><span className={TEMP_BADGE[c.temperature]}>{LABELS.temperature[c.temperature]}</span></td>
@@ -300,7 +304,7 @@ export default function ProspectsView() {
                   <input type="checkbox" aria-label={`Seleccionar ${c.name}`} checked={selected.has(c.id)} onChange={() => toggle(c.id)} className="mt-1 h-4 w-4 rounded border-input accent-orange-500" />
                   <div className="min-w-0 flex-1">
                     <button onClick={() => setEditing(c)} className="block max-w-full truncate text-left font-semibold">{c.name}</button>
-                    <p className="text-xs text-muted-foreground">{LABELS.category[c.category]}{c.contactMethod ? ` · ${c.contactMethod}` : ''}</p>
+                    <p className="text-xs text-muted-foreground">{LABELS.category[c.category]}{summaryOf(c) ? ` · ${summaryOf(c)}` : ''}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <ResultOrStage c={c} />
                       <span className={TEMP_BADGE[c.temperature]}>{LABELS.temperature[c.temperature]}</span>
@@ -380,6 +384,28 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   );
 }
 
+function summaryOf(c: Contact) {
+  return c.phone ?? c.email ?? c.social ?? '';
+}
+
+function ChannelLinks({ c }: { c: Contact }) {
+  const links = [
+    { href: phoneLink(c.phone), label: 'WhatsApp', icon: MessageCircle },
+    { href: socialLink(c.social), label: 'Red social', icon: Globe },
+    { href: emailLink(c.email), label: 'Email', icon: Mail },
+  ].filter((l): l is { href: string; label: string; icon: typeof Globe } => !!l.href);
+  return (
+    <>
+      {links.map(({ href, label, icon: Icon }) => (
+        <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${label} de ${c.name}`} title={label}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Icon className="h-4 w-4" />
+        </a>
+      ))}
+    </>
+  );
+}
+
 function ResultOrStage({ c }: { c: Contact }) {
   if (c.result !== 'abierto') {
     const good = c.result === 'cliente' || c.result === 'recurrente' || c.result === 'equipo';
@@ -414,6 +440,7 @@ function RowActions({ c, onFollowUp, onEdit, onDelete, wide }: { c: Contact; onF
         </button>
       )}
       <div className="flex items-center gap-1">
+        <ChannelLinks c={c} />
         <button aria-label={`Editar ${c.name}`} onClick={() => onEdit(c)} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><Pencil className="h-4 w-4" /></button>
         <button aria-label={`Eliminar ${c.name}`} onClick={() => onDelete(c)} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
       </div>

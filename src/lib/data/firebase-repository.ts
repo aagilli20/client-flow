@@ -17,6 +17,7 @@ import {
   type DocumentData,
   type QueryConstraint,
 } from 'firebase/firestore';
+import { withChannels } from '@/lib/contact-link';
 import { getFirebase } from '@/lib/firebase/config';
 import {
   DEFAULT_SETTINGS,
@@ -67,7 +68,8 @@ export function createFirebaseRepository(uid: string): Repository {
       c.push(opts.rangeField ? orderBy(opts.rangeField, 'desc') : orderBy('createdAt', 'desc'));
       c.push(limit(opts.max ?? DEFAULT_MAX));
       const snap = await getDocs(query(collection(db, col), ...c));
-      return snap.docs.map((d) => toDomain<typeof col>(d.id, d.data()));
+      const out = snap.docs.map((d) => toDomain<typeof col>(d.id, d.data()));
+      return (col === 'contacts' ? out.map((c) => withChannels(c as CollectionMap['contacts'])) : out) as CollectionMap[typeof col][];
     },
 
     async create<K extends CollectionName>(col: K, data: NewDoc<K>) {

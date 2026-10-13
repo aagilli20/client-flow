@@ -30,6 +30,16 @@ export interface SeedData {
 
 const iso = (day: string, hour = 12) => `${day}T${String(hour).padStart(2, '0')}:00:00.000Z`;
 
+/** Medios de contacto ficticios (teléfonos 5491100xxxxx, dominios example.com) según el canal del prospecto. */
+function channelsFor(name: string, method: string, i: number) {
+  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]+/g, '.');
+  const phone = `5491100${String(10000 + i * 137).slice(0, 5)}`;
+  if (method === 'Instagram') return { social: `instagram.com/${slug}`, ...(i % 3 === 0 ? { phone } : {}) };
+  if (method === 'Facebook') return { social: `facebook.com/${slug}` };
+  if (method === 'Teléfono') return { phone, ...(i % 2 === 0 ? { email: `${slug}@example.com` } : {}) };
+  return { phone };
+}
+
 export function buildSeed(uid: string, now = new Date()): SeedData {
   const today = toDateStr(now);
   const month = monthOf(today);
@@ -62,7 +72,7 @@ export function buildSeed(uid: string, now = new Date()): SeedData {
       id: `${uid}-c${i + 1}`,
       userId: uid,
       name,
-      contactMethod: method,
+      ...channelsFor(name, method, i),
       category,
       temperature,
       stage,

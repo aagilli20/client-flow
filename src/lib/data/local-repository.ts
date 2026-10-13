@@ -7,6 +7,7 @@ import {
   type NewDoc,
   type UserSettings,
 } from '@/lib/types';
+import { withChannels } from '@/lib/contact-link';
 import { DEFAULT_MAX, type ListOptions, type Repository } from './repository';
 
 /** Almacenamiento mínimo (localStorage en el navegador, Map en tests). */
@@ -48,7 +49,8 @@ export function createLocalRepository(uid: string, store: KVStore): Repository {
         });
       }
       docs = [...docs].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-      return docs.slice(0, opts.max ?? DEFAULT_MAX) as unknown as CollectionMap[typeof col][];
+      const out = docs.slice(0, opts.max ?? DEFAULT_MAX) as unknown as CollectionMap[typeof col][];
+      return (col === 'contacts' ? out.map((c) => withChannels(c as CollectionMap['contacts'])) : out) as CollectionMap[typeof col][];
     },
 
     async create<K extends CollectionName>(col: K, data: NewDoc<K>) {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidEmail, isValidPhone } from './contact-link';
 
 /**
  * Modelo de dominio de ClientFlow.
@@ -63,7 +64,9 @@ const optionalDate = z.union([dateOnly, z.literal('')]).optional();
 
 export const contactInputSchema = z.object({
   name: z.string().trim().min(2, 'Ingresá al menos 2 caracteres').max(80, 'Máximo 80 caracteres'),
-  contactMethod: z.string().trim().max(80, 'Máximo 80 caracteres').optional(),
+  phone: z.string().trim().max(30, 'Máximo 30 caracteres').refine(isValidPhone, 'Ingresá el teléfono con código de país (8 a 15 dígitos)').optional(),
+  social: z.string().trim().max(120, 'Máximo 120 caracteres').optional(),
+  email: z.string().trim().max(120, 'Máximo 120 caracteres').refine(isValidEmail, 'El email no es válido').optional(),
   category: z.enum(CATEGORIES),
   temperature: z.enum(TEMPERATURES),
   stage: z.enum(STAGES),
@@ -118,6 +121,10 @@ interface Base {
 
 export interface Contact extends Base {
   name: string;
+  phone?: string; // solo dígitos con código de país, ej. 5493425482222
+  social?: string; // URL o dominio, ej. instagram.com/usuario
+  email?: string;
+  /** @deprecated campo anterior (un solo texto); se reparte en phone/social/email al leer. */
   contactMethod?: string;
   category: Category;
   temperature: Temperature;

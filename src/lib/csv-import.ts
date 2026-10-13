@@ -1,3 +1,4 @@
+import { phoneDigits, splitContactMethod } from './contact-link';
 import { contactInputSchema, CATEGORIES, RESULTS, STAGES, TEMPERATURES, type ContactInput } from './types';
 
 /** Importación de prospectos desde CSV. Lógica pura (sin DOM) para poder testearla. */
@@ -6,9 +7,9 @@ export const MAX_IMPORT_ROWS = 500;
 export const MAX_IMPORT_BYTES = 1_000_000;
 
 export const CSV_TEMPLATE =
-  'nombre,medio_de_contacto,categoria,temperatura,etapa,resultado,proxima_accion,fecha_proximo_seguimiento,notas\n' +
-  'Lucía Fernández,5493425482222,negocio,caliente,propuesta,abierto,Enviar propuesta,2026-10-20,Muy interesada\n' +
-  'Martín Rossi,instagram.com/martinrossi,producto,tibio,seguimiento,abierto,,,\n';
+  'nombre,telefono,red_social,email,categoria,temperatura,etapa,resultado,proxima_accion,fecha_proximo_seguimiento,notas\n' +
+  'Lucía Fernández,5493425482222,instagram.com/lucia.fernandez,lucia@example.com,negocio,caliente,propuesta,abierto,Enviar propuesta,2026-10-20,Muy interesada\n' +
+  'Martín Rossi,,instagram.com/martinrossi,,producto,tibio,seguimiento,abierto,,,\n';
 
 /** Parser CSV (RFC 4180): comillas, comillas escapadas "" y saltos de línea dentro de campos. */
 export function parseCsv(text: string): string[][] {
@@ -42,9 +43,14 @@ export function parseCsv(text: string): string[][] {
 const norm = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 
+/** Encabezados del formato anterior (un solo campo): se reparte en teléfono / red social / email. */
+const LEGACY_METHOD = ['medio_de_contacto', 'medio_contacto', 'medio', 'contacto'];
+
 const HEADERS: Record<keyof ContactInput, string[]> = {
   name: ['nombre', 'name', 'prospecto', 'nombre_y_apellido', 'apellido_y_nombre'],
-  contactMethod: ['medio_de_contacto', 'medio_contacto', 'medio', 'contacto', 'telefono', 'tel', 'celular', 'whatsapp', 'instagram', 'link'],
+  phone: ['telefono', 'tel', 'celular', 'whatsapp', 'movil', 'phone'],
+  social: ['red_social', 'redes_sociales', 'red', 'social', 'instagram', 'ig', 'link', 'facebook'],
+  email: ['email', 'e_mail', 'mail', 'correo', 'correo_electronico'],
   category: ['categoria', 'category', 'tipo'],
   temperature: ['temperatura', 'temperature'],
   stage: ['etapa', 'stage'],
@@ -68,7 +74,7 @@ const VALUE_ALIASES: Record<string, Record<string, string>> = {
 };
 const ALLOWED = { category: CATEGORIES, temperature: TEMPERATURES, stage: STAGES, result: RESULTS } as const;
 const FIELD_LABEL: Record<string, string> = {
-  name: 'nombre', contactMethod: 'medio de contacto', category: 'categoría', temperature: 'temperatura', stage: 'etapa',
+  name: 'nombre', phone: 'teléfono', social: 'red social', email: 'email', category: 'categoría', temperature: 'temperatura', stage: 'etapa',
   result: 'resultado', notes: 'notas', nextAction: 'próxima acción', nextActionDate: 'fecha de seguimiento',
 };
 
@@ -106,7 +112,8 @@ export function parseContactsCsv(text: string): ImportParse {
     const idx = header.findIndex((h) => HEADERS[field].includes(h));
     if (idx >= 0) colOf[field] = idx;
   });
-  const used = new Set(Object.values(colOf));
+  const legacyCol = header.findIndex((h) => LEGACY_METHOD.includes(h));
+  const used = new Set([...Object.values(colOf), ...(legacyCol >= 0 ? [legacyCol] : [])]);
   const ignoredColumns = table[0]!.filter((_, i) => !used.has(i) && header[i] !== '');
 
   if (colOf.name === undefined) {
@@ -121,9 +128,18 @@ export function parseContactsCsv(text: string): ImportParse {
     const get = (f: keyof ContactInput) => (colOf[f] === undefined ? '' : (cells[colOf[f]] ?? '').trim());
     const errors: string[] = [];
     const draft: Record<string, string> = {
-      name: get('name'), contactMethod: get('contactMethod'), notes: get('notes'), nextAction: get('nextAction'),
+      name: get('name'), phone: get('phone'), social: get('social'), email: get('email'), notes: get('notes'), nextAction: get('nextAction'),
       category: 'negocio', temperature: 'tibio', stage: 'conversacion', result: 'abierto', nextActionDate: '',
     };
+
+    if (legacyCol >= 0) {
+      const legacy = splitContactMethod(cells[legacyCol] ?? '');
+      for (const k of ['phone', 'social', 'email'] as const) draft[k] ||= legacy[k];
+    }
+    if (draft.phone) {
+      const digits = phoneDigits(draft.phone);
+      if (/^\+?[\d\s().-]+$/.test(draft.phone)) draft.phone = digits; // normaliza; si trae letras, falla la validación
+    }
 
     for (const f of ['category', 'temperature', 'stage', 'result'] as const) {
       const raw = get(f);

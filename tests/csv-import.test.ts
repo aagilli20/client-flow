@@ -20,6 +20,20 @@ describe('parseContactsCsv', () => {
     expect(r.rows[1]!.input!.category).toBe('cliente'); // "producto" → cliente
   });
 
+  it('teléfono, red social y email en columnas separadas', () => {
+    const r = parseContactsCsv('nombre,telefono,red_social,email\nAna,+54 9 342 548-2222,instagram.com/ana,ana@example.com\nBeto,12,,beto@mal');
+    expect(r.rows[0]!.input).toMatchObject({ phone: '5493425482222', social: 'instagram.com/ana', email: 'ana@example.com' });
+    expect(r.rows[1]!.input).toBeUndefined();
+    expect(r.rows[1]!.errors.join(' ')).toMatch(/teléfono|email/);
+  });
+
+  it('formato anterior medio_de_contacto se reparte solo', () => {
+    const r = parseContactsCsv('nombre,medio_de_contacto\nAna,5493425482222 / instagram.com/ana\nBeto,beto@example.com');
+    expect(r.rows[0]!.input).toMatchObject({ phone: '5493425482222', social: 'instagram.com/ana' });
+    expect(r.rows[1]!.input).toMatchObject({ email: 'beto@example.com' });
+    expect(r.ignoredColumns).toEqual([]);
+  });
+
   it('solo nombre es obligatorio y el resto toma valores por defecto', () => {
     const r = parseContactsCsv('Nombre\nAna Pérez');
     expect(r.rows[0]!.input).toMatchObject({ name: 'Ana Pérez', category: 'negocio', temperature: 'tibio', stage: 'conversacion', result: 'abierto', nextActionDate: '' });

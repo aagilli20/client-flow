@@ -105,7 +105,7 @@ export default function ImportDialog({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Columnas reconocidas: nombre, medio_de_contacto, categoria (negocio/producto), temperatura (frio/tibio/caliente), etapa, resultado, proxima_accion,
+            Columnas reconocidas: nombre, telefono, red_social, email, categoria (negocio/producto), temperatura (frio/tibio/caliente), etapa, resultado, proxima_accion,
             fecha_proximo_seguimiento (AAAA-MM-DD o DD/MM/AAAA) y notas. Lo que falte toma un valor por defecto. Los nombres que ya existen se omiten.
           </p>
 

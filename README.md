@@ -64,7 +64,7 @@ Colecciones raíz; **cada documento lleva `userId`** (uid del dueño) y las regl
 | Colección | ID | Campos principales |
 |---|---|---|
 | `users` | `{uid}` | `displayName`, `sponsorName?`, `goals{conversations,followUps,posts}`, timestamps |
-| `contacts` | auto | `name`, `contactMethod?`, `category` (negocio/cliente), `temperature` (frio/tibio/caliente), `stage` (conversacion/seguimiento/presentacion/propuesta), `result` (abierto/cliente/recurrente/equipo/despues/no), `notes?`, `nextAction?`, `nextActionDate?`, `followUpsCount`, `lastActionDate?` |
+| `contacts` | auto | `name`, `phone?` (solo dígitos con código de país), `social?` (URL o dominio), `email?`, `category` (negocio/cliente), `temperature` (frio/tibio/caliente), `stage` (conversacion/seguimiento/presentacion/propuesta), `result` (abierto/cliente/recurrente/equipo/despues/no), `notes?`, `nextAction?`, `nextActionDate?`, `followUpsCount`, `lastActionDate?` |
 | `team_members` | auto | `name`, `status` (shadow/registered), `sponsorId` (id de otro miembro o `null` = directo), `monthlyVolume`, `startDate`, `checklist[]` |
 | `social_posts` | auto | `date`, `category` (negocio/producto/estilo_vida), `note?` |
 | `focus_metrics` | auto | `name`, `monthlyTarget`, `currentValue`, `weight` (1-5), `month` (`YYYY-MM`) |
